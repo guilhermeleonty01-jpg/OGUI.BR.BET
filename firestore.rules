@@ -1,0 +1,102 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// This security rules file assumes the following data structures:
+//
+// Collection: matches
+// Document ID: auto-generated
+// Fields:
+//   - homeTeam: string (required) - Name of the home team
+//   - awayTeam: string (required) - Name of the away team
+//   - homeScore: number (required) - Current score of the home team
+//   - awayScore: number (required) - Current score of the away team
+//   - time: string - Current match time (e.g., "74'")
+//   - status: string (required, enum: ["LIVE", "FINISHED", "PRE-LIVE"]) - Match status
+//   - goalTrend: number - Probability of a goal (0-100)
+//   - xG: list - Expected goals [home, away]
+//   - possession: list - Possession percentages [home, away]
+//   - lineups: map - Home and away player lists
+//
+// Collection: teams
+// Document ID: team name or auto-generated
+// Fields:
+//   - name: string (required) - Team name
+//   - avgGoals: number - Average goals per match
+//   - winRate: number - Win percentage
+//   - history: list - List of recent match results
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "guilherme.leonty01@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidMatch(data) {
+      return hasRequiredFields(['homeTeam', 'awayTeam', 'homeScore', 'awayScore', 'status']) &&
+             data.homeTeam is string && data.homeTeam.size() > 0 &&
+             data.awayTeam is string && data.awayTeam.size() > 0 &&
+             data.homeScore is int && data.homeScore >= 0 &&
+             data.awayScore is int && data.awayScore >= 0 &&
+             data.status in ["LIVE", "FINISHED", "PRE-LIVE"];
+    }
+
+    function isValidTeam(data) {
+      return hasRequiredFields(['name']) &&
+             data.name is string && data.name.size() > 0;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /matches/{matchId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidMatch(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /teams/{teamId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidTeam(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow create, update: if isAuthenticated() && request.auth.uid == userId && 
+                            (!('role' in request.resource.data) || isAdmin());
+    }
+  }
+}

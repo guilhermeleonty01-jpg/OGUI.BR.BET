@@ -1,0 +1,83 @@
+{
+  "entities": {
+    "Match": {
+      "title": "Match",
+      "description": "A soccer match with real-time stats and history.",
+      "type": "object",
+      "properties": {
+        "homeTeam": { "type": "string" },
+        "awayTeam": { "type": "string" },
+        "homeScore": { "type": "integer" },
+        "awayScore": { "type": "integer" },
+        "time": { "type": "string" },
+        "status": { "type": "string", "enum": ["LIVE", "FINISHED", "PRE-LIVE"] },
+        "goalTrend": { "type": "integer" },
+        "xG": { "type": "array", "items": { "type": "number" } },
+        "possession": { "type": "array", "items": { "type": "number" } },
+        "trading": {
+          "type": "object",
+          "properties": {
+            "liquidity": { "type": "number" },
+            "volume": { "type": "number" },
+            "backOdds": { "type": "array", "items": { "type": "number" } },
+            "layOdds": { "type": "array", "items": { "type": "number" } },
+            "lastPriceTraded": { "type": "array", "items": { "type": "number" } },
+            "matchedAmount": { "type": "number" },
+            "marketDepth": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "price": { "type": "number" },
+                  "size": { "type": "number" },
+                  "side": { "type": "string", "enum": ["back", "lay"] }
+                }
+              }
+            }
+          }
+        },
+        "lineups": {
+          "type": "object",
+          "properties": {
+            "home": { "type": "array", "items": { "type": "string" } },
+            "away": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      },
+      "required": ["homeTeam", "awayTeam", "homeScore", "awayScore", "status"]
+    },
+    "TeamStats": {
+      "title": "TeamStats",
+      "description": "Historical statistics for a team.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "avgGoals": { "type": "number" },
+        "winRate": { "type": "number" },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": { "type": "string" },
+              "score": { "type": "string" },
+              "opponent": { "type": "string" },
+              "result": { "type": "string", "enum": ["W", "D", "L"] }
+            }
+          }
+        }
+      },
+      "required": ["name"]
+    }
+  },
+  "firestore": {
+    "/matches": {
+      "schema": "Match",
+      "description": "Collection of all matches."
+    },
+    "/teams": {
+      "schema": "TeamStats",
+      "description": "Collection of team statistics."
+    }
+  }
+}
